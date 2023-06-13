@@ -4,23 +4,23 @@ import algorandEjemploAldeco.segundo_first_transaction_example as SEGUNDO
 ### 1.1 CREANDO CUENTAS EN ALGORAND ###
 '''
 # Generando llave privada de cuenta A y su dirección
-llave_privada_A, direccion_cuenta_A, _ = PRIMERO.generar_cuenta_llavePrivada()
+cuenta_A, _ = PRIMERO.generar_cuenta()
 
 # Almacenando en un archivo de texto la llave privada y la dirección de la cuenta A
 with open("cuentas.txt", "w") as archivo:
-    archivo.write(f"A: {llave_privada_A},{direccion_cuenta_A}\n")
+    archivo.write(f"{cuenta_A.llave_privada},{cuenta_A.direccion}\n")
 
 # Generando llave privada de cuenta A y su dirección
-llave_privada_B, direccion_cuenta_B, _ = PRIMERO.generar_cuenta_llavePrivada()
+cuenta_B, _ = PRIMERO.generar_cuenta()
 
 # Almacenando en un archivo de texto la llave privada y la dirección de la cuenta A
 with open("cuentas.txt", "a") as archivo:
-    archivo.write(f"B: {llave_privada_B},{direccion_cuenta_B}\n")
+    archivo.write(f"{cuenta_B.llave_privada},{cuenta_B.direccion}\n")
 '''
-cuentas_creadas = PRIMERO.leer_cuentas_deArchivo("cuentas.txt")
-# cuentas_creadas = {0: (llave_privada_A,direccion_cuenta_A), 1: (llave_privada_B,direccion_cuenta_B)}; dictionary
-llave_privada_A,direccion_cuenta_A = cuentas_creadas[0] # (llave_privada_A,direccion_cuenta_A); tuple
-llave_privada_B,direccion_cuenta_B = cuentas_creadas[1] # (llave_privada_B,direccion_cuenta_B); tuple
+l_cuentas_creadas = PRIMERO.leer_cuentas_deArchivo("cuentas.txt")
+
+cuenta_A = l_cuentas_creadas[0]  
+cuenta_B = l_cuentas_creadas[1] 
 
 ### 1.2 AÑADIENDO FONDOS A LAS CUENTAS ###
 # URL: https://testnet.algoexplorer.io/dispenser
@@ -35,21 +35,21 @@ llave_privada_B,direccion_cuenta_B = cuentas_creadas[1] # (llave_privada_B,direc
 algod_client = SEGUNDO.conexion_con_cliente_algod(red="algonode")
 
 ### 2.2 REVISAR EL SALDO DE LA CUENTA A ###
-saldo, account_info_A = SEGUNDO.verficar_balance_cuenta(algod_client, direccion_cuenta_A)
+saldo, account_info_A = SEGUNDO.verficar_balance_cuenta(algod_client, cuenta_A.direccion)
 
 ### 2.3 CREAR UNA TRANSACCIÓN ###
 amount = 500000
 note = "Esta es la n-esima transaccion de A"
-unsigned_txn,params = SEGUNDO.crear_transaccion(algod_client, direccion_cuenta_A, direccion_cuenta_B, amount, note)
+unsigned_txn,params = SEGUNDO.crear_transaccion(algod_client, cuenta_A.direccion, cuenta_B.direccion, amount, note)
 
 ### 2.4 FIRMAR LA TRANSACCIÓN ###
-signed_txn = SEGUNDO.firmar_transaccion(unsigned_txn, llave_privada_A)
+signed_txn = SEGUNDO.firmar_transaccion(unsigned_txn, cuenta_A.llave_privada)
 
 ### 2.5 ENVIAR UNA TRANSACCIÓN ###
 confirmed_txn,tx_id = SEGUNDO.enviar_transaccion(algod_client, signed_txn)
 
 # Imprimiendo información de la transacción
-SEGUNDO.imprimir_transaccion(algod_client,direccion_cuenta_A,account_info_A,confirmed_txn,amount,params)
+SEGUNDO.imprimir_transaccion(algod_client,cuenta_A.direccion,account_info_A,confirmed_txn,amount,params)
 
 # Confirmando transaccion en el explorador
 # URL: https://testnet.algoexplorer.io/

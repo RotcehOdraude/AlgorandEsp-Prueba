@@ -1,17 +1,13 @@
 import algorandEjemploAldeco.primero_crearCuenta as PRIMERO
 import algorandEjemploAldeco.segundo_first_transaction_example as SEGUNDO
 import algorandEjemploAldeco.tercero_admin_asset as TERCERO
-from algorandEjemploAldeco.tercero_admin_asset import LLAVE_PRIVADA_DE_X, DIRECCION_DE_CUENTA_X
+
 
 # Borrar el contenido del archivo
-with open("cuentas_activos.txt", "w") as archivo:
-    archivo.write("")
+# with open("cuentas_activos.txt", "w") as archivo:
+#     archivo.write("")
 
-# Haciendo una estructura para el creador o Sender del activo
-class Creador_del_activo:
-    def __init__(self, llave_privada, direccion ):
-        self.llave_privada = llave_privada
-        self.direccion = direccion
+
 
 ### 3.0 CREAR Y ADMINISTRAR MI PROPIO ACTIVO ###
 '''
@@ -31,20 +27,24 @@ Requisitos:
  4. Recuperar
 '''
 
-# Generando 3 cuentas
-for i in range(3):
-    llave_privada_X, direccion_cuenta_X, _ = PRIMERO.generar_cuenta_llavePrivada()
-    with open("cuentas_activos.txt", "a") as archivo:
-        archivo.write(f"{llave_privada_X},{direccion_cuenta_X}\n")
+cuentas_creadas = PRIMERO.leer_cuentas_deArchivo("cuentas_activos.txt")
+# cuentas_creadas = []
+# # Generando 3 cuentas
+# for i in range(3):
+#     cuenta, _ = PRIMERO.generar_cuenta()
+#     cuentas_creadas.append(cuenta)
+#     with open("cuentas_activos.txt", "a") as archivo:
+#         archivo.write(f"{cuenta.llave_privada},{cuenta.direccion}\n")
 
-cuentas_creadas = PRIMERO.leer_cuentas_deArchivo("cuentas_activos.txt") 
-# cuentas_creadas = {0: (llave_privada_A,direccion_cuenta_A), 1: (llave_privada_B,direccion_cuenta_B), ...}
+creador_del_activo = cuentas_creadas[0]
 
-creador_del_activo = Creador_del_activo(cuentas_creadas[0][LLAVE_PRIVADA_DE_X],cuentas_creadas[0][DIRECCION_DE_CUENTA_X])
+cuenta_0 = cuentas_creadas[0]
+cuenta_1 = cuentas_creadas[1]
+cuenta_2 = cuentas_creadas[2]
 
 # Añadiendo fondos a la cuenta
 # URL: https://testnet.algoexplorer.io/dispenser
-input(f"Presiona enter hasta haber añadido fondos a la cuenta del creado del activo:{creador_del_activo.direccion}\n")
+input(f"Presiona enter hasta haber añadido fondos a la cuenta del creador del activo:{creador_del_activo.direccion}\n")
 
 # Conexión con el cliente
 algod_client = SEGUNDO.conexion_con_cliente_algod(red="algonode")
@@ -55,20 +55,79 @@ print(f"Saldo de la cuenta {creador_del_activo.direccion} es: {saldo} microAlgos
 
 if(saldo > 10000):
     # Creamos un activo
-    unsigned_txn = TERCERO.crear_activo(algod_client, cuentas_creadas)
+    print("####### Creando activo...")
+    sender = cuenta_0.direccion
+    manager = cuenta_1.direccion
+    reserve = cuenta_1.direccion
+    freeze = cuenta_1.direccion
+    clawback = cuenta_1.direccion
 
-    # Firmamos la transacción
-    signed_txn = SEGUNDO.firmar_transaccion(unsigned_txn, creador_del_activo.llave_privada)
-
-    # Enviamos la transacción
-    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,signed_txn)
+    confirmed_txn, tx_id = TERCERO.crear_activo(algod_client,creador_del_activo.llave_privada, sender, manager, reserve, freeze, clawback)
 
     # Impriendo la transacción del activo
     TERCERO.imprimir_transaccion_activo(algod_client, confirmed_txn, tx_id, creador_del_activo.direccion)
 
-    print("Account 1 address: {}".format(creador_del_activo.direccion))
-    print("Account 2 address: {}".format(cuentas_creadas[1][DIRECCION_DE_CUENTA_X]))
-    print("Account 3 address: {}".format(cuentas_creadas[2][DIRECCION_DE_CUENTA_X]))
+    # print("Account 1 address: {}".format(creador_del_activo.direccion))
+    # print("Account 2 address: {}".format(cuenta_1.direccion))
+    # print("Account 3 address: {}".format(cuenta_2.direccion))
+
+    ### 3.2 MODIFICANDO UN ACTIVO ###
+    print("####### Modificando activo...")
+
+    # Cambiando administrador
+    # El administrador actual (la cuenta 1) emite una transacción de configuración de activos que asigna la cuenta 0 como nuevo administrador. 
+    # El resto de las operaciones quedan igual.
+
+    sender = cuenta_1.direccion
+    sender_private_key = cuenta_1.llave_privada
+    manager = cuenta_0.direccion
+    reserve = cuenta_1.direccion
+    freeze = cuenta_1.direccion
+    clawback = cuenta_1.direccion
+    asset_id = TERCERO.obtener_asset_id(algod_client, tx_id)
+
+    TERCERO.modificando_activo(algod_client, asset_id, sender, sender_private_key, manager, reserve, freeze, clawback)
+
+    # Imprimiendo el activo creado
+    TERCERO.print_created_asset(algod_client, sender, asset_id)
+
+
+    ### 3.3 RECIVIR UN ACTIVO (Opt.in)###
+    print("####### Recibiendo activo...")
+    '''
+    Antes de que una cuenta pueda recibir un activo específico, debe "optar" por recibirlo, es decir debe de realizar la operación de opt-in.
+    La operación de opt-in es simplemente una transferencia de activos con una cantidad de 0, tanto hacia como desde la cuenta realizando dicha operación.
+    El siguiente código muestra esta operación para la cuenta 2.
+    '''
+
+    confirmed_txn, txid = TERCERO.opt_in(algod_client, asset_id, cuenta_2.direccion,cuenta_2.llave_privada)
+
+    print("TXID: ", txid)
+    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
+
+    # Verificamos que el activo pertenece a esta cuenta
+    # Este debe mostrar balance de 0
+    TERCERO.print_asset_holding(algod_client, cuenta_2.direccion, asset_id)
+
+    ### 3.4 TRANSFERIR UN ACTIVO ###
+    print("####### Transferir activo...")
+    '''
+    Los activos pueden transferirse entre cuentas que hayan optado por recibirlos (operación anterior). Son análogas a las transacciones de pago estándar, pero para los ASAs.
+    El siguiente código muestra un ejemplo que transfiere 10 activos de la cuenta 0 a la cuenta 2.
+    '''
+    confirmed_txn, txid = TERCERO.transferir_activo(algod_client ,cuenta_0.direccion, cuenta_0.llave_privada, cuenta_2.direccion, 10, asset_id)
+
+    print("TXID: ", txid)
+    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
+    TERCERO.print_asset_holding(algod_client, cuenta_2.direccion, asset_id)
+
+    ### 3.5 CONGELAR UN ACTIVO ###
+    print("####### Congelar activo...")
+    '''
+    Congelar o descongelar un activo para una cuenta requiere de una transacción firmada por la cuenta que realizará esta operación.
+    El código siguiente muestra como la cuenta 1 congela los activos de la cuenta 2.
+    '''
+
+
 else:
     print("La cuenta no tiene suficientes fondos para crear un activo")
-

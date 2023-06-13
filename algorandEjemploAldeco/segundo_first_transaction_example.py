@@ -140,15 +140,13 @@ def enviar_transaccion(algod_client,signed_txn):
 
         # wait for confirmation
         confirmed_txn = transaction.wait_for_confirmation(algod_client, tx_id, 4)
-        #print("TXID: ", txid)
-        #print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
         return confirmed_txn, tx_id
     except Exception as err:
         print("ERROR: ENTRE AL ERROR DEL TRY EXCEPT DE ENVIAR TRANSACCION")
         print(err)
         return None, None
 
-def imprimir_transaccion(algod_client, my_address,account_info, confirmed_txn,amount, params):
+def imprimir_transaccion(algod_client, my_address, account_info, confirmed_txn, amount, params):
     """
     Imprime información detallada sobre una transacción confirmada.
 

@@ -3,6 +3,7 @@ import base64
 from algosdk.v2client import algod
 from algosdk import account, mnemonic, encoding
 from algosdk.transaction import *
+import algorandEjemploAldeco.segundo_first_transaction_example as SEGUNDO
 
 # Definicion de constantes
 DIRECCION_DE_CUENTA_X = 1 # Usado para la tupla (llave_privada_X,direccion_cuenta_X); Donde 1 representa el segundo elemento en la tupla
@@ -35,47 +36,35 @@ def print_asset_holding(algodclient, address, assetid):
 
 
 # Crear un activo
-def crear_activo(algod_client, accounts, sender = None, manager = None, reserve = None, freeze = None, clawback = None, unit_name = "Puma", asset_name = "Jeringas",url = "https://path/to/my/asset/details", decimals = 0):
-    """
-    Esta funcion crea una transacción y configura un activo.
-
-    Args:
-        algod_client: Cliente Algod de Algorand utilizado para realizar transacciones.
-        accounts: Lista de cuentas involucradas en la transacción.
-        sender: Dirección del remitente de la transacción (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
-        manager: Dirección del administrador del activo (opcional). Si no se proporciona, se utilizará accounts[0][DIRECCION_DE_CUENTA_X].
-        reserve: Dirección de la reserva del activo (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
-        freeze: Dirección para congelar el activo (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
-        clawback: Dirección para revocar el activo (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
-        unit_name: Nombre de la unidad del activo (opcional). Valor por defecto: "MIMONEDA".
-        asset_name: Nombre del activo (opcional). Valor por defecto: "MiMoneda".
-        url: URL de detalles del activo (opcional). Valor por defecto: "https://path/to/my/asset/details".
-        decimals: Número de decimales del activo (opcional). Valor por defecto: 0.
-
-    Returns:
-        Una transacción sin firmar (unsigned_txn) para configurar el activo.
-    """
+def crear_activo(algod_client, sender_private_key ,sender, manager, reserve, freeze, clawback, unit_name = "Puma", asset_name = "Jeringas",url = "https://path/to/my/asset/details", decimals = 0):
+    
     # Obtener parámetros de red para transacciones antes de cada transacción.
     params = algod_client.suggested_params()
     params.fee = 1000
     params.flat_fee = True
 
     unsigned_txn = AssetConfigTxn(
-        sender = accounts[0][DIRECCION_DE_CUENTA_X] if sender is None else sender,
+        sender = sender,
         sp = params,
         total = 1000,
         default_frozen = False,
         unit_name = unit_name,
         asset_name = asset_name,
-        manager = accounts[1][DIRECCION_DE_CUENTA_X] if manager is None else manager,
-        reserve = accounts[1][DIRECCION_DE_CUENTA_X] if reserve is None else reserve,
-        freeze = accounts[1][DIRECCION_DE_CUENTA_X] if freeze is None else freeze,
-        clawback = accounts[1][DIRECCION_DE_CUENTA_X] if clawback is None else clawback,
+        manager =  manager, 
+        reserve =  reserve, 
+        freeze =  freeze,
+        clawback =  clawback,
         url = url,
         decimals = decimals
     )
+    # Firmamos la transacción
+    signed_txn = SEGUNDO.firmar_transaccion(unsigned_txn, sender_private_key)
+
+    # Enviamos la transacción
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,signed_txn)
+
+    return confirmed_txn, tx_id
     
-    return unsigned_txn
 
 '''
 # Se envía la transacción a la red de la misma manera que se describió previamente
@@ -89,6 +78,11 @@ try:
 except Exception as err:
     print(err)
 '''
+def obtener_asset_id(algod_client, tx_id):
+    pendig_tx = algod_client.pending_transaction_info(tx_id)
+    asset_id = pendig_tx["asset-index"]
+    return asset_id
+
 
 def imprimir_transaccion_activo(algod_client, confirmed_txn, tx_id, sender):
     """
@@ -104,63 +98,95 @@ def imprimir_transaccion_activo(algod_client, confirmed_txn, tx_id, sender):
     print("Transaction information: {}".format(
         json.dumps(confirmed_txn, indent=4)))
     try:
-        pendig_tx = algod_client.pending_transaction_info(tx_id)
-        asset_id = pendig_tx["asset-index"]
+        asset_id = obtener_asset_id(algod_client, tx_id)
 
         print_created_asset(algod_client, sender, asset_id)
         print_asset_holding(algod_client, sender, asset_id)
     except Exception as e:
         print(e)
 
-'''
+
 # Modificando un activo
+def modificando_activo(algod_client, asset_id, sender,sender_private_key, manager, reserve, freeze, clawback):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetConfigTxn(
+        sender= sender,
+        sp=params,
+        index=asset_id,
+        manager=manager,
+        reserve=reserve,
+        freeze=freeze,
+        clawback=clawback
+    )
 
-txn = AssetConfigTxn(
-    sender=accounts[1],
-    sp=params,
-    index=asset_id,
-    manager=accounts[0],
-    reserve=accounts[1],
-    freeze=accounts[1],
-    clawback=accounts[1])
-stxn = txn.sign(SKs[1])
-
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-
-except Exception as err:
-    print(err)
-print_created_asset(algod_client, accounts[0], asset_id)
+    s_txn = SEGUNDO.firmar_transaccion(txn, sender_private_key)
+    SEGUNDO.enviar_transaccion(algod_client,s_txn)
 
 # OPT-IN
+def opt_in(algod_client, asset_id, opt_adress,opt_private_key):
+    # Verificar si asset_id esta en la cuenta "opt_adress" antes del opt-in
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    account_info = algod_client.account_info(opt_adress)
+    holding = None
+    idx = 0
 
-account_info = algod_client.account_info(accounts[2])
-holding = None
-idx = 0
-for my_account_info in account_info['assets']:
-    scrutinized_asset = account_info['assets'][idx]
-    idx = idx + 1
-    if (scrutinized_asset['asset-id'] == asset_id):
-        holding = True
-        break
+    for my_account_info in account_info['assets']:
+        scrutinized_asset = account_info['assets'][idx]
+        idx = idx + 1
+        if (scrutinized_asset['asset-id'] == asset_id):
+            holding = True
+            break
 
-if not holding:
+    if not holding:
+        # Usamos la clase AssetTransferTxn para transferir y realizar opt-in
+        txn = AssetTransferTxn(
+            sender=opt_adress,
+            sp=params,
+            receiver=opt_adress,
+            amt=0,
+            index=asset_id)
+        
+        # Se firma la transacción
+        stxn = SEGUNDO.firmar_transaccion(txn,opt_private_key)
+
+        # Se envia la transacción a la red
+        confirmed_txn, txid = SEGUNDO.enviar_transaccion(algod_client,stxn)
+        return confirmed_txn, txid
+
+# Transferir un activo
+
+def transferir_activo(algod_client,sender_address,sender_private_key,receiver_adderss,amount,asset_id):
+    params = algod_client.suggested_params()
 
     txn = AssetTransferTxn(
-        sender=accounts[2],
+        sender = sender_address,
+        sp = params,
+        receiver = receiver_adderss,
+        amt = amount,
+        index = asset_id)
+    
+    # Se firma la transacción
+    stxn = SEGUNDO.firmar_transaccion(txn,sender_private_key)
+
+    # Se envia la transacción a la red
+    confirmed_txn, txid = SEGUNDO.enviar_transaccion(algod_client,stxn)
+
+    return confirmed_txn, txid
+
+# Congelar un activo
+def congelar_activo(algod_client):
+    params = algod_client.suggested_params()
+
+    txn = AssetFreezeTxn(
+        sender=accounts[1],
         sp=params,
-        receiver=accounts[2],
-        amt=0,
-        index=asset_id)
-    stxn = txn.sign(SKs[2])
+        index=asset_id,
+        target=accounts[2],
+        new_freeze_state=True
+    )
+    stxn = txn.sign(SKs[1])
 
     try:
         txid = algod_client.send_transaction(stxn)
@@ -168,59 +194,12 @@ if not holding:
         confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
         print("TXID: ", txid)
         print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-
     except Exception as err:
         print(err)
+
     print_asset_holding(algod_client, accounts[2], asset_id)
 
-# Transferir un activo
-
-params = algod_client.suggested_params()
-
-txn = AssetTransferTxn(
-    sender=accounts[0],
-    sp=params,
-    receiver=accounts[2],
-    amt=10,
-    index=asset_id)
-stxn = txn.sign(SKs[0])
-
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-
-except Exception as err:
-    print(err)
-
-print_asset_holding(algod_client, accounts[2], asset_id)
-
-# Congelar un activo
-
-params = algod_client.suggested_params()
-
-txn = AssetFreezeTxn(
-    sender=accounts[1],
-    sp=params,
-    index=asset_id,
-    target=accounts[2],
-    new_freeze_state=True
-)
-stxn = txn.sign(SKs[1])
-
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-except Exception as err:
-    print(err)
-
-print_asset_holding(algod_client, accounts[2], asset_id)
-
+'''
 # Revocar un activo
 
 params = algod_client.suggested_params()
@@ -280,5 +259,4 @@ try:
 
 except Exception as e:
     print(e)
-
 '''
