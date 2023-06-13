@@ -4,46 +4,13 @@ from algosdk.v2client import algod
 from algosdk import account, mnemonic, encoding
 from algosdk.transaction import *
 
-# Aquí usamos mnemónicos que por seguridad no incluimos en el código
-
-mnemonic1 = "mnemonic1"
-mnemonic2 = "mnemonic2"
-mnemonic3 = "mnemonic3"
-address1 = "address1"
-address2 = "address2"
-address3 = "address3"
-
-accounts = [address1, address2, address3]
-
-# Obtenemos las llaves privadas usando mnemónicos
-
-sk1 = "{}".format(mnemonic.to_private_key(mnemonic1))
-sk2 = "{}".format(mnemonic.to_private_key(mnemonic2))
-sk3 = "{}".format(mnemonic.to_private_key(mnemonic3))
-SKs = [sk1, sk2, sk3]
-
-#Conexión con el cliente
-
-#Si usas PureStake
-
-#algod_client = algod.AlgodClient(
-#    algod_token="",
-#    algod_address="https://testnet-algorand.api.purestake.io/ps2",
-#    headers={"X-API-Key": "API KEY"}
-#)
-
-#Si usas AlgoNode
-
-algod_client = algod.AlgodClient(
-    algod_token="",
-    algod_address="https://testnet-api.algonode.cloud",
-    headers={"X-API-Key": ""}
-)
+# Definicion de constantes
+DIRECCION_DE_CUENTA_X = 1 # Usado para la tupla (llave_privada_X,direccion_cuenta_X); Donde 1 representa el segundo elemento en la tupla
+LLAVE_PRIVADA_DE_X = 0 # Usado para la tupla (llave_privada_X,direccion_cuenta_X); Donde 0 representa el primer elemento en la tupla
 
 #  Función de utilidad para imprimir el activo creado para la cuenta y el assetid
-
-def print_created_asset(algodclient, account, assetid):
-    account_info = algodclient.account_info(account)
+def print_created_asset(algodclient, address, assetid):
+    account_info = algodclient.account_info(address)
     idx = 0;
     for my_account_info in account_info['created-assets']:
         scrutinized_asset = account_info['created-assets'][idx]
@@ -55,9 +22,8 @@ def print_created_asset(algodclient, account, assetid):
 
 
 #Función de utilidad para imprimir la tenencia de activos para la cuenta y assetid
-
-def print_asset_holding(algodclient, account, assetid):
-    account_info = algodclient.account_info(account)
+def print_asset_holding(algodclient, address, assetid):
+    account_info = algodclient.account_info(address)
     idx = 0
     for my_account_info in account_info['assets']:
         scrutinized_asset = account_info['assets'][idx]
@@ -67,35 +33,54 @@ def print_asset_holding(algodclient, account, assetid):
             print(json.dumps(scrutinized_asset, indent=4))
             break
 
-    print("Account 1 address: {}".format(accounts[0]))
-    print("Account 2 address: {}".format(accounts[1]))
-    print("Account 3 address: {}".format(accounts[2]))
-
 
 # Crear un activo
-# Obtener parámetros de red para transacciones antes de cada transacción.
+def crear_activo(algod_client, accounts, sender = None, manager = None, reserve = None, freeze = None, clawback = None, unit_name = "Puma", asset_name = "Jeringas",url = "https://path/to/my/asset/details", decimals = 0):
+    """
+    Esta funcion crea una transacción y configura un activo.
 
-params = algod_client.suggested_params()
-params.fee = 1000
-params.flat_fee = True
+    Args:
+        algod_client: Cliente Algod de Algorand utilizado para realizar transacciones.
+        accounts: Lista de cuentas involucradas en la transacción.
+        sender: Dirección del remitente de la transacción (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
+        manager: Dirección del administrador del activo (opcional). Si no se proporciona, se utilizará accounts[0][DIRECCION_DE_CUENTA_X].
+        reserve: Dirección de la reserva del activo (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
+        freeze: Dirección para congelar el activo (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
+        clawback: Dirección para revocar el activo (opcional). Si no se proporciona, se utilizará accounts[1][DIRECCION_DE_CUENTA_X].
+        unit_name: Nombre de la unidad del activo (opcional). Valor por defecto: "MIMONEDA".
+        asset_name: Nombre del activo (opcional). Valor por defecto: "MiMoneda".
+        url: URL de detalles del activo (opcional). Valor por defecto: "https://path/to/my/asset/details".
+        decimals: Número de decimales del activo (opcional). Valor por defecto: 0.
 
-txn = AssetConfigTxn(
-    sender=accounts[0],
-    sp=params,
-    total=1000,
-    default_frozen=False,
-    unit_name="MIMONEDA",
-    asset_name="MiMoneda",
-    manager=accounts[1],
-    reserve=accounts[1],
-    freeze=accounts[1],
-    clawback=accounts[1],
-    url="https://path/to/my/asset/details",
-    decimals=0)
-stxn = txn.sign("{}".format(SKs[0]))
+    Returns:
+        Una transacción sin firmar (unsigned_txn) para configurar el activo.
+    """
+    # Obtener parámetros de red para transacciones antes de cada transacción.
+    params = algod_client.suggested_params()
+    params.fee = 1000
+    params.flat_fee = True
 
+    unsigned_txn = AssetConfigTxn(
+        sender = accounts[0][DIRECCION_DE_CUENTA_X] if sender is None else sender,
+        sp = params,
+        total = 1000,
+        default_frozen = False,
+        unit_name = unit_name,
+        asset_name = asset_name,
+        manager = accounts[1][DIRECCION_DE_CUENTA_X] if manager is None else manager,
+        reserve = accounts[1][DIRECCION_DE_CUENTA_X] if reserve is None else reserve,
+        freeze = accounts[1][DIRECCION_DE_CUENTA_X] if freeze is None else freeze,
+        clawback = accounts[1][DIRECCION_DE_CUENTA_X] if clawback is None else clawback,
+        url = url,
+        decimals = decimals
+    )
+    
+    return unsigned_txn
+
+'''
+# Se envía la transacción a la red de la misma manera que se describió previamente
 try:
-    txid = algod_client.send_transaction(stxn)
+    txid = algod_client.send_transaction(signed_txn)
     print("Signed transaction with txID: {}".format(txid))
     confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
     print("TXID: ", txid)
@@ -103,17 +88,31 @@ try:
 
 except Exception as err:
     print(err)
+'''
 
-print("Transaction information: {}".format(
-    json.dumps(confirmed_txn, indent=4)))
-try:
-    ptx = algod_client.pending_transaction_info(txid)
-    asset_id = ptx["asset-index"]
-    print_created_asset(algod_client, accounts[0], asset_id)
-    print_asset_holding(algod_client, accounts[0], asset_id)
-except Exception as e:
-    print(e)
+def imprimir_transaccion_activo(algod_client, confirmed_txn, tx_id, sender):
+    """
+    Imprime información sobre una transacción de activo y muestra detalles adicionales del activo y las tenencias asociadas.
 
+    Parámetros:
+    - algod_client (algod.AlgodClient): El cliente Algod utilizado para interactuar con la cadena de bloques.
+    - confirmed_txn (dict): La transacción confirmada de activo.
+    - tx_id (str): El ID de transacción de la transacción de activo.
+    - accounts (list): Una lista de cuentas involucradas en la transacción de activo.
+
+    """
+    print("Transaction information: {}".format(
+        json.dumps(confirmed_txn, indent=4)))
+    try:
+        pendig_tx = algod_client.pending_transaction_info(tx_id)
+        asset_id = pendig_tx["asset-index"]
+
+        print_created_asset(algod_client, sender, asset_id)
+        print_asset_holding(algod_client, sender, asset_id)
+    except Exception as e:
+        print(e)
+
+'''
 # Modificando un activo
 
 params = algod_client.suggested_params()
@@ -281,3 +280,5 @@ try:
 
 except Exception as e:
     print(e)
+
+'''

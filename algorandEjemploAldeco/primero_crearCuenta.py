@@ -19,8 +19,8 @@ def generar_cuenta_llavePrivada():
     # Convert the private key into a mnemonic which is easier to use
     mnemonic = algosdk.mnemonic.from_private_key(private_key)
 
-    print("Private key mnemonic: " + mnemonic)
-    print("Account address: " + account_address)
+    #print("Private key mnemonic: " + mnemonic)
+    #print("Account address: " + account_address)
     
     return private_key, account_address, mnemonic
 

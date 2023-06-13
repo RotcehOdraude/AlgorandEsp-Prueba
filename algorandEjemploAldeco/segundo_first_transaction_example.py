@@ -5,7 +5,7 @@ from algosdk import constants
 import json
 import base64
 
-def conexion_con_cliente_algod(red = "algonode",algod_token = None, api_key = None):
+def conexion_con_cliente_algod(red = "algonode", algod_token = None, api_key = None):
     """
     Conexión con el cliente.
 
@@ -70,9 +70,14 @@ def verficar_balance_cuenta(algod_client, my_address):
     - algo_client.account_info(my_address): La información de la cuenta.
 
     """
-    account_info = algod_client.account_info(my_address)
-    print("Account balance: {} microAlgos".format(account_info.get('amount')) + "\n")
-    return account_info.get('amount'), account_info
+    try:
+        account_info = algod_client.account_info(my_address)
+        print("Account balance: {} microAlgos".format(account_info.get('amount')) + "\n")
+        return account_info.get('amount'), account_info
+    except Exception as e:
+        print(e)
+        return -1
+    
 
 # build transaction
 def crear_transaccion(algod_client, my_address, receiver_address, amount=1000000, note=""):
@@ -129,15 +134,19 @@ def enviar_transaccion(algod_client,signed_txn):
     - transaction.ConfirmedTransaction: La transacción confirmada por la red.
 
     """
-    tx_id = algod_client.send_transaction(signed_txn)
-    print("Successfully sent transaction with txID: {}".format(tx_id))
-
-    # wait for confirmation
     try:
+        tx_id = algod_client.send_transaction(signed_txn)
+        print("Successfully sent transaction with txID: {}".format(tx_id))
+
+        # wait for confirmation
         confirmed_txn = transaction.wait_for_confirmation(algod_client, tx_id, 4)
+        #print("TXID: ", txid)
+        #print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
         return confirmed_txn, tx_id
     except Exception as err:
+        print("ERROR: ENTRE AL ERROR DEL TRY EXCEPT DE ENVIAR TRANSACCION")
         print(err)
+        return None, None
 
 def imprimir_transaccion(algod_client, my_address,account_info, confirmed_txn,amount, params):
     """
