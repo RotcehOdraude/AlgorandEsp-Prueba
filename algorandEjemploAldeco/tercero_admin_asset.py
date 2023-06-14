@@ -176,28 +176,20 @@ def transferir_activo(algod_client,sender_address,sender_private_key,receiver_ad
     return confirmed_txn, txid
 
 # Congelar un activo
-def congelar_activo(algod_client):
+def congelar_activo(algod_client,congelador,congelador_llave_privada,asset_id,target):
     params = algod_client.suggested_params()
 
     txn = AssetFreezeTxn(
-        sender=accounts[1],
+        sender=congelador,
         sp=params,
         index=asset_id,
-        target=accounts[2],
+        target=target,
         new_freeze_state=True
     )
-    stxn = txn.sign(SKs[1])
+    stxn = SEGUNDO.firmar_transaccion(txn,congelador_llave_privada)
 
-    try:
-        txid = algod_client.send_transaction(stxn)
-        print("Signed transaction with txID: {}".format(txid))
-        confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-        print("TXID: ", txid)
-        print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-    except Exception as err:
-        print(err)
-
-    print_asset_holding(algod_client, accounts[2], asset_id)
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
+    return confirmed_txn, tx_id
 
 '''
 # Revocar un activo

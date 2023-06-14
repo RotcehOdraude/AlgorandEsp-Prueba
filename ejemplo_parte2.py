@@ -55,7 +55,7 @@ print(f"Saldo de la cuenta {creador_del_activo.direccion} es: {saldo} microAlgos
 
 if(saldo > 10000):
     # Creamos un activo
-    print("####### Creando activo...")
+    print("\n####### Creando activo...")
     sender = cuenta_0.direccion
     manager = cuenta_1.direccion
     reserve = cuenta_1.direccion
@@ -72,8 +72,7 @@ if(saldo > 10000):
     # print("Account 3 address: {}".format(cuenta_2.direccion))
 
     ### 3.2 MODIFICANDO UN ACTIVO ###
-    print("####### Modificando activo...")
-
+    print("\n####### Modificando activo...")
     # Cambiando administrador
     # El administrador actual (la cuenta 1) emite una transacción de configuración de activos que asigna la cuenta 0 como nuevo administrador. 
     # El resto de las operaciones quedan igual.
@@ -93,7 +92,7 @@ if(saldo > 10000):
 
 
     ### 3.3 RECIVIR UN ACTIVO (Opt.in)###
-    print("####### Recibiendo activo...")
+    print("\n####### Recibiendo activo...")
     '''
     Antes de que una cuenta pueda recibir un activo específico, debe "optar" por recibirlo, es decir debe de realizar la operación de opt-in.
     La operación de opt-in es simplemente una transferencia de activos con una cantidad de 0, tanto hacia como desde la cuenta realizando dicha operación.
@@ -110,7 +109,7 @@ if(saldo > 10000):
     TERCERO.print_asset_holding(algod_client, cuenta_2.direccion, asset_id)
 
     ### 3.4 TRANSFERIR UN ACTIVO ###
-    print("####### Transferir activo...")
+    print("\n####### Transferir activo...")
     '''
     Los activos pueden transferirse entre cuentas que hayan optado por recibirlos (operación anterior). Son análogas a las transacciones de pago estándar, pero para los ASAs.
     El siguiente código muestra un ejemplo que transfiere 10 activos de la cuenta 0 a la cuenta 2.
@@ -122,11 +121,26 @@ if(saldo > 10000):
     TERCERO.print_asset_holding(algod_client, cuenta_2.direccion, asset_id)
 
     ### 3.5 CONGELAR UN ACTIVO ###
-    print("####### Congelar activo...")
+    print("\n####### Congelar activo...")
     '''
     Congelar o descongelar un activo para una cuenta requiere de una transacción firmada por la cuenta que realizará esta operación.
     El código siguiente muestra como la cuenta 1 congela los activos de la cuenta 2.
     '''
+    confirmed_txn, txid = TERCERO.congelar_activo(algod_client, cuenta_1.direccion, cuenta_1.llave_privada, asset_id, cuenta_2.direccion)
+
+    print("TXID: ", txid)
+    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
+    TERCERO.print_asset_holding(algod_client, cuenta_2.direccion, asset_id)
+
+    ### 3.6 REVOCAR UN ACTIVO ###
+    print("\n####### Revocar activo...")
+    '''
+    La revocación de un activo elimina un número específico de activos de una cuenta desde la cuenta de recuperación de dicho activo.
+    Para realizar esta operación es necesario especificar un emisor de activos (la cuenta de destino a revocar) y un receptor de activos (la cuenta a la que se transferiran los fondos de regreso).
+    El siguiente código muestra la revocación de la cuenta 3 para regresar los activos a la cuenta 1, esto realizado por la cuenta 2.
+    '''
+    
+    
 
 
 else:
