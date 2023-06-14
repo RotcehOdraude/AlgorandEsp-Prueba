@@ -1,5 +1,4 @@
 from algosdk.v2client import algod
-from algosdk import mnemonic
 from algosdk import transaction
 from algosdk import constants
 import json

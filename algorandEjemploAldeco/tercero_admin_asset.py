@@ -1,7 +1,4 @@
 import json
-import base64
-from algosdk.v2client import algod
-from algosdk import account, mnemonic, encoding
 from algosdk.transaction import *
 import algorandEjemploAldeco.segundo_first_transaction_example as SEGUNDO
 
@@ -36,7 +33,7 @@ def print_asset_holding(algodclient, address, assetid):
 
 
 # Crear un activo
-def crear_activo(algod_client, sender_private_key ,sender, manager, reserve, freeze, clawback, unit_name = "Puma", asset_name = "Jeringas",url = "https://path/to/my/asset/details", decimals = 0):
+def crear_activo(algod_client, sender_private_key ,sender, manager, reserve, freeze, clawback, asset_name = "Jeringas", unit_name = "Jeringa",url = "https://path/to/my/asset/details", decimals = 0):
     
     # Obtener parámetros de red para transacciones antes de cada transacción.
     params = algod_client.suggested_params()
@@ -209,35 +206,19 @@ def revocar_activo(algod_client,asset_id,operador,operador_llave_privada,devolve
     confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
     return confirmed_txn, tx_id
 
-'''
+
 # Destruir un activo
+def destruir_activo(algod_client,asset_id,destructor, destructor_llave_privada):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetConfigTxn(
+        sender=destructor,
+        sp=params,
+        index=asset_id,
+        strict_empty_address_check=False
+        )
 
-txn = AssetConfigTxn(
-    sender=accounts[0],
-    sp=params,
-    index=asset_id,
-    strict_empty_address_check=False
-    )
+    stxn = SEGUNDO.firmar_transaccion(txn,destructor_llave_privada)
 
-stxn = txn.sign(SKs[0])
-
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-except Exception as err:
-    print(err)
-try:
-    print("Account 3 must do a transaction for an amount of 0, ")
-    print("with a close_assets_to to the creator account, to clear it from its accountholdings")
-    print("For Account 1, nothing should print after this as the asset is destroyed on the creator account")
-    print_asset_holding(algod_client, accounts[0], asset_id)
-    print_created_asset(algod_client, accounts[0], asset_id)
-
-except Exception as e:
-    print(e)
-'''
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
+    return confirmed_txn, tx_id

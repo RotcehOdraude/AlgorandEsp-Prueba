@@ -3,7 +3,7 @@ import algorandEjemploAldeco.segundo_first_transaction_example as SEGUNDO
 import algorandEjemploAldeco.tercero_admin_asset as TERCERO
 
 
-# Borrar el contenido del archivo
+# #Borra el contenido del archivo
 # with open("cuentas_activos.txt", "w") as archivo:
 #     archivo.write("")
 
@@ -62,7 +62,17 @@ if(saldo > 10000):
     freeze = cuenta_1.direccion
     clawback = cuenta_1.direccion
 
-    confirmed_txn, tx_id = TERCERO.crear_activo(algod_client,creador_del_activo.llave_privada, sender, manager, reserve, freeze, clawback)
+    confirmed_txn, tx_id = TERCERO.crear_activo(
+        algod_client,
+        creador_del_activo.llave_privada, 
+        sender, 
+        manager, 
+        reserve, 
+        freeze, 
+        clawback,
+        asset_name="caja_jer", # Max 8 caracteres
+        unit_name="jeringa" # Max 8 caracteres
+    )
 
     # Impriendo la transacción del activo
     TERCERO.imprimir_transaccion_activo(algod_client, confirmed_txn, tx_id, creador_del_activo.direccion)
@@ -150,6 +160,27 @@ if(saldo > 10000):
     print("Account 1")
     TERCERO.print_asset_holding(algod_client, cuenta_0.direccion, asset_id)
     
+    ### 3.7 DESTRUIR UN ACTIVO ###
+    print("\n####### Destruir activo...")
+    '''
+    Los activos pueden ser destruidos por la cuenta administradora. Todos los activos deben ser propiedad del creador del activo antes de que el activo pueda ser eliminado.
+    El siguiente código muestra un ejemplo donde la cuenta 0 destruye un activo de la cuenta 2.
+    '''
+    confirmed_txn, txid = TERCERO.destruir_activo(algod_client,asset_id,cuenta_0.direccion,cuenta_0.llave_privada)
+
+    print("TXID: ", txid)
+    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
+
+    try:
+        print("Account 3 must do a transaction for an amount of 0, ")
+        print("with a close_assets_to to the creator account, to clear it from its accountholdings")
+        print("For Account 1, nothing should print after this as the asset is destroyed on the creator account")
+        TERCERO.print_asset_holding(algod_client, cuenta_0.direccion, asset_id)
+        TERCERO.print_created_asset(algod_client, cuenta_0.direccion, asset_id)
+
+    except Exception as e:
+        print(e)
+
 
 
 else:
