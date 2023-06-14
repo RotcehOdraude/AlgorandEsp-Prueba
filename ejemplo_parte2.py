@@ -137,9 +137,18 @@ if(saldo > 10000):
     '''
     La revocación de un activo elimina un número específico de activos de una cuenta desde la cuenta de recuperación de dicho activo.
     Para realizar esta operación es necesario especificar un emisor de activos (la cuenta de destino a revocar) y un receptor de activos (la cuenta a la que se transferiran los fondos de regreso).
-    El siguiente código muestra la revocación de la cuenta 3 para regresar los activos a la cuenta 1, esto realizado por la cuenta 2.
+    El siguiente código muestra la revocación de la cuenta 2 para regresar los activos a la cuenta 0, esto realizado por la cuenta 1.
     '''
-    
+    confirmed_txn, txid = TERCERO.revocar_activo(algod_client, asset_id, cuenta_1.direccion, cuenta_1.llave_privada, cuenta_2.direccion, cuenta_0.direccion)
+
+    print("TXID: ", txid)
+    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
+
+    print("Account 3")
+    TERCERO.print_asset_holding(algod_client, cuenta_2.direccion, asset_id)
+
+    print("Account 1")
+    TERCERO.print_asset_holding(algod_client, cuenta_0.direccion, asset_id)
     
 
 

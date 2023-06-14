@@ -191,36 +191,25 @@ def congelar_activo(algod_client,congelador,congelador_llave_privada,asset_id,ta
     confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
     return confirmed_txn, tx_id
 
-'''
+
 # Revocar un activo
+def revocar_activo(algod_client,asset_id,operador,operador_llave_privada,devolvedor,receiver):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetTransferTxn(
+        sender=operador,
+        sp=params,
+        receiver=receiver,
+        amt=10,
+        index=asset_id,
+        revocation_target=devolvedor
+    )
+    stxn = SEGUNDO.firmar_transaccion(txn,operador_llave_privada)
 
-txn = AssetTransferTxn(
-    sender=accounts[1],
-    sp=params,
-    receiver=accounts[0],
-    amt=10,
-    index=asset_id,
-    revocation_target=accounts[2]
-)
-stxn = txn.sign(SKs[1])
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
+    return confirmed_txn, tx_id
 
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-except Exception as err:
-    print(err)
-
-print("Account 3")
-print_asset_holding(algod_client, accounts[2], asset_id)
-
-print("Account 1")
-print_asset_holding(algod_client, accounts[0], asset_id)
-
+'''
 # Destruir un activo
 
 params = algod_client.suggested_params()
