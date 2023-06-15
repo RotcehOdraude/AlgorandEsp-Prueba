@@ -1,49 +1,14 @@
 import json
-import base64
-from algosdk.v2client import algod
-from algosdk import account, mnemonic, encoding
 from algosdk.transaction import *
+import algorandEjemploAldeco.segundo_first_transaction_example as SEGUNDO
 
-# Aquí usamos mnemónicos que por seguridad no incluimos en el código
-
-mnemonic1 = "mnemonic1"
-mnemonic2 = "mnemonic2"
-mnemonic3 = "mnemonic3"
-address1 = "address1"
-address2 = "address2"
-address3 = "address3"
-
-accounts = [address1, address2, address3]
-
-# Obtenemos las llaves privadas usando mnemónicos
-
-sk1 = "{}".format(mnemonic.to_private_key(mnemonic1))
-sk2 = "{}".format(mnemonic.to_private_key(mnemonic2))
-sk3 = "{}".format(mnemonic.to_private_key(mnemonic3))
-SKs = [sk1, sk2, sk3]
-
-#Conexión con el cliente
-
-#Si usas PureStake
-
-#algod_client = algod.AlgodClient(
-#    algod_token="",
-#    algod_address="https://testnet-algorand.api.purestake.io/ps2",
-#    headers={"X-API-Key": "API KEY"}
-#)
-
-#Si usas AlgoNode
-
-algod_client = algod.AlgodClient(
-    algod_token="",
-    algod_address="https://testnet-api.algonode.cloud",
-    headers={"X-API-Key": ""}
-)
+# Definicion de constantes
+DIRECCION_DE_CUENTA_X = 1 # Usado para la tupla (llave_privada_X,direccion_cuenta_X); Donde 1 representa el segundo elemento en la tupla
+LLAVE_PRIVADA_DE_X = 0 # Usado para la tupla (llave_privada_X,direccion_cuenta_X); Donde 0 representa el primer elemento en la tupla
 
 #  Función de utilidad para imprimir el activo creado para la cuenta y el assetid
-
-def print_created_asset(algodclient, account, assetid):
-    account_info = algodclient.account_info(account)
+def print_created_asset(algodclient, address, assetid):
+    account_info = algodclient.account_info(address)
     idx = 0;
     for my_account_info in account_info['created-assets']:
         scrutinized_asset = account_info['created-assets'][idx]
@@ -55,9 +20,8 @@ def print_created_asset(algodclient, account, assetid):
 
 
 #Función de utilidad para imprimir la tenencia de activos para la cuenta y assetid
-
-def print_asset_holding(algodclient, account, assetid):
-    account_info = algodclient.account_info(account)
+def print_asset_holding(algodclient, address, assetid):
+    account_info = algodclient.account_info(address)
     idx = 0
     for my_account_info in account_info['assets']:
         scrutinized_asset = account_info['assets'][idx]
@@ -67,35 +31,42 @@ def print_asset_holding(algodclient, account, assetid):
             print(json.dumps(scrutinized_asset, indent=4))
             break
 
-    print("Account 1 address: {}".format(accounts[0]))
-    print("Account 2 address: {}".format(accounts[1]))
-    print("Account 3 address: {}".format(accounts[2]))
-
 
 # Crear un activo
-# Obtener parámetros de red para transacciones antes de cada transacción.
+def crear_activo(algod_client, sender_private_key ,sender, manager, reserve, freeze, clawback, asset_name = "Jeringas", unit_name = "Jeringa",url = "https://path/to/my/asset/details", decimals = 0):
+    
+    # Obtener parámetros de red para transacciones antes de cada transacción.
+    params = algod_client.suggested_params()
+    params.fee = 1000
+    params.flat_fee = True
 
-params = algod_client.suggested_params()
-params.fee = 1000
-params.flat_fee = True
+    unsigned_txn = AssetConfigTxn(
+        sender = sender,
+        sp = params,
+        total = 1000,
+        default_frozen = False,
+        unit_name = unit_name,
+        asset_name = asset_name,
+        manager =  manager, 
+        reserve =  reserve, 
+        freeze =  freeze,
+        clawback =  clawback,
+        url = url,
+        decimals = decimals
+    )
+    # Firmamos la transacción
+    signed_txn = SEGUNDO.firmar_transaccion(unsigned_txn, sender_private_key)
 
-txn = AssetConfigTxn(
-    sender=accounts[0],
-    sp=params,
-    total=1000,
-    default_frozen=False,
-    unit_name="MIMONEDA",
-    asset_name="MiMoneda",
-    manager=accounts[1],
-    reserve=accounts[1],
-    freeze=accounts[1],
-    clawback=accounts[1],
-    url="https://path/to/my/asset/details",
-    decimals=0)
-stxn = txn.sign("{}".format(SKs[0]))
+    # Enviamos la transacción
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,signed_txn)
 
+    return confirmed_txn, tx_id
+    
+
+'''
+# Se envía la transacción a la red de la misma manera que se describió previamente
 try:
-    txid = algod_client.send_transaction(stxn)
+    txid = algod_client.send_transaction(signed_txn)
     print("Signed transaction with txID: {}".format(txid))
     confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
     print("TXID: ", txid)
@@ -103,181 +74,151 @@ try:
 
 except Exception as err:
     print(err)
+'''
+def obtener_asset_id(algod_client, tx_id):
+    pendig_tx = algod_client.pending_transaction_info(tx_id)
+    asset_id = pendig_tx["asset-index"]
+    return asset_id
 
-print("Transaction information: {}".format(
-    json.dumps(confirmed_txn, indent=4)))
-try:
-    ptx = algod_client.pending_transaction_info(txid)
-    asset_id = ptx["asset-index"]
-    print_created_asset(algod_client, accounts[0], asset_id)
-    print_asset_holding(algod_client, accounts[0], asset_id)
-except Exception as e:
-    print(e)
+
+def imprimir_transaccion_activo(algod_client, confirmed_txn, tx_id, sender):
+    """
+    Imprime información sobre una transacción de activo y muestra detalles adicionales del activo y las tenencias asociadas.
+
+    Parámetros:
+    - algod_client (algod.AlgodClient): El cliente Algod utilizado para interactuar con la cadena de bloques.
+    - confirmed_txn (dict): La transacción confirmada de activo.
+    - tx_id (str): El ID de transacción de la transacción de activo.
+    - accounts (list): Una lista de cuentas involucradas en la transacción de activo.
+
+    """
+    print("Transaction information: {}".format(
+        json.dumps(confirmed_txn, indent=4)))
+    try:
+        asset_id = obtener_asset_id(algod_client, tx_id)
+
+        print_created_asset(algod_client, sender, asset_id)
+        print_asset_holding(algod_client, sender, asset_id)
+    except Exception as e:
+        print(e)
+
 
 # Modificando un activo
+def modificando_activo(algod_client, asset_id, sender,sender_private_key, manager, reserve, freeze, clawback):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetConfigTxn(
+        sender= sender,
+        sp=params,
+        index=asset_id,
+        manager=manager,
+        reserve=reserve,
+        freeze=freeze,
+        clawback=clawback
+    )
 
-txn = AssetConfigTxn(
-    sender=accounts[1],
-    sp=params,
-    index=asset_id,
-    manager=accounts[0],
-    reserve=accounts[1],
-    freeze=accounts[1],
-    clawback=accounts[1])
-stxn = txn.sign(SKs[1])
-
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-
-except Exception as err:
-    print(err)
-print_created_asset(algod_client, accounts[0], asset_id)
+    s_txn = SEGUNDO.firmar_transaccion(txn, sender_private_key)
+    SEGUNDO.enviar_transaccion(algod_client,s_txn)
 
 # OPT-IN
+def opt_in(algod_client, asset_id, opt_adress,opt_private_key):
+    # Verificar si asset_id esta en la cuenta "opt_adress" antes del opt-in
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    account_info = algod_client.account_info(opt_adress)
+    holding = None
+    idx = 0
 
-account_info = algod_client.account_info(accounts[2])
-holding = None
-idx = 0
-for my_account_info in account_info['assets']:
-    scrutinized_asset = account_info['assets'][idx]
-    idx = idx + 1
-    if (scrutinized_asset['asset-id'] == asset_id):
-        holding = True
-        break
+    for my_account_info in account_info['assets']:
+        scrutinized_asset = account_info['assets'][idx]
+        idx = idx + 1
+        if (scrutinized_asset['asset-id'] == asset_id):
+            holding = True
+            break
 
-if not holding:
+    if not holding:
+        # Usamos la clase AssetTransferTxn para transferir y realizar opt-in
+        txn = AssetTransferTxn(
+            sender=opt_adress,
+            sp=params,
+            receiver=opt_adress,
+            amt=0,
+            index=asset_id)
+        
+        # Se firma la transacción
+        stxn = SEGUNDO.firmar_transaccion(txn,opt_private_key)
 
-    txn = AssetTransferTxn(
-        sender=accounts[2],
-        sp=params,
-        receiver=accounts[2],
-        amt=0,
-        index=asset_id)
-    stxn = txn.sign(SKs[2])
-
-    try:
-        txid = algod_client.send_transaction(stxn)
-        print("Signed transaction with txID: {}".format(txid))
-        confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-        print("TXID: ", txid)
-        print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-
-    except Exception as err:
-        print(err)
-    print_asset_holding(algod_client, accounts[2], asset_id)
+        # Se envia la transacción a la red
+        confirmed_txn, txid = SEGUNDO.enviar_transaccion(algod_client,stxn)
+        return confirmed_txn, txid
 
 # Transferir un activo
 
-params = algod_client.suggested_params()
+def transferir_activo(algod_client,sender_address,sender_private_key,receiver_adderss,amount,asset_id):
+    params = algod_client.suggested_params()
 
-txn = AssetTransferTxn(
-    sender=accounts[0],
-    sp=params,
-    receiver=accounts[2],
-    amt=10,
-    index=asset_id)
-stxn = txn.sign(SKs[0])
+    txn = AssetTransferTxn(
+        sender = sender_address,
+        sp = params,
+        receiver = receiver_adderss,
+        amt = amount,
+        index = asset_id)
+    
+    # Se firma la transacción
+    stxn = SEGUNDO.firmar_transaccion(txn,sender_private_key)
 
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
+    # Se envia la transacción a la red
+    confirmed_txn, txid = SEGUNDO.enviar_transaccion(algod_client,stxn)
 
-except Exception as err:
-    print(err)
-
-print_asset_holding(algod_client, accounts[2], asset_id)
+    return confirmed_txn, txid
 
 # Congelar un activo
+def congelar_activo(algod_client,congelador,congelador_llave_privada,asset_id,target):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetFreezeTxn(
+        sender=congelador,
+        sp=params,
+        index=asset_id,
+        target=target,
+        new_freeze_state=True
+    )
+    stxn = SEGUNDO.firmar_transaccion(txn,congelador_llave_privada)
 
-txn = AssetFreezeTxn(
-    sender=accounts[1],
-    sp=params,
-    index=asset_id,
-    target=accounts[2],
-    new_freeze_state=True
-)
-stxn = txn.sign(SKs[1])
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
+    return confirmed_txn, tx_id
 
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-except Exception as err:
-    print(err)
-
-print_asset_holding(algod_client, accounts[2], asset_id)
 
 # Revocar un activo
+def revocar_activo(algod_client,asset_id,operador,operador_llave_privada,devolvedor,receiver):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetTransferTxn(
+        sender=operador,
+        sp=params,
+        receiver=receiver,
+        amt=10,
+        index=asset_id,
+        revocation_target=devolvedor
+    )
+    stxn = SEGUNDO.firmar_transaccion(txn,operador_llave_privada)
 
-txn = AssetTransferTxn(
-    sender=accounts[1],
-    sp=params,
-    receiver=accounts[0],
-    amt=10,
-    index=asset_id,
-    revocation_target=accounts[2]
-)
-stxn = txn.sign(SKs[1])
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
+    return confirmed_txn, tx_id
 
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-except Exception as err:
-    print(err)
-
-print("Account 3")
-print_asset_holding(algod_client, accounts[2], asset_id)
-
-print("Account 1")
-print_asset_holding(algod_client, accounts[0], asset_id)
 
 # Destruir un activo
+def destruir_activo(algod_client,asset_id,destructor, destructor_llave_privada):
+    params = algod_client.suggested_params()
 
-params = algod_client.suggested_params()
+    txn = AssetConfigTxn(
+        sender=destructor,
+        sp=params,
+        index=asset_id,
+        strict_empty_address_check=False
+        )
 
-txn = AssetConfigTxn(
-    sender=accounts[0],
-    sp=params,
-    index=asset_id,
-    strict_empty_address_check=False
-    )
+    stxn = SEGUNDO.firmar_transaccion(txn,destructor_llave_privada)
 
-stxn = txn.sign(SKs[0])
-
-try:
-    txid = algod_client.send_transaction(stxn)
-    print("Signed transaction with txID: {}".format(txid))
-    confirmed_txn = wait_for_confirmation(algod_client, txid, 4)
-    print("TXID: ", txid)
-    print("Result confirmed in round: {}".format(confirmed_txn['confirmed-round']))
-except Exception as err:
-    print(err)
-try:
-    print("Account 3 must do a transaction for an amount of 0, ")
-    print("with a close_assets_to to the creator account, to clear it from its accountholdings")
-    print("For Account 1, nothing should print after this as the asset is destroyed on the creator account")
-    print_asset_holding(algod_client, accounts[0], asset_id)
-    print_created_asset(algod_client, accounts[0], asset_id)
-
-except Exception as e:
-    print(e)
+    confirmed_txn, tx_id = SEGUNDO.enviar_transaccion(algod_client,stxn)
+    return confirmed_txn, tx_id

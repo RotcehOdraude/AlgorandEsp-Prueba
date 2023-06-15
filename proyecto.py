@@ -1,3 +1,0 @@
-from algorandEjemploAldeco import primero_crearCuenta
-
-primero_crearCuenta.generar_cuenta_llavePrivada()
