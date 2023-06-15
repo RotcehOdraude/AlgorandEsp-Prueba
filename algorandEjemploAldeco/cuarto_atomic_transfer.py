@@ -62,16 +62,14 @@ def group_transactions():
     receiver = account_3
     amount = 100000
     txn_1 = transaction.PaymentTxn(sender, params, receiver, amount)
-    print("...txn_1: from {} to {} for {} microAlgos".format(
-        sender, receiver, amount))
+    print("...txn_1: from {} to {} for {} microAlgos".format(sender, receiver, amount))
     print("...created txn_1: ", txn_1.get_txid())
     # de la cuenta 2 a la cuenta 1
     sender = account_2
     receiver = account_1
     amount = 200000
     txn_2 = transaction.PaymentTxn(sender, params, receiver, amount)
-    print("...txn_2: from {} to {} for {} microAlgos".format(
-        sender, receiver, amount))
+    print("...txn_2: from {} to {} for {} microAlgos".format(sender, receiver, amount))
     print("...created txn_2: ", txn_2.get_txid())
 
     print("Grouping transactions...")
@@ -110,16 +108,12 @@ def group_transactions():
     display_account_algo_balance(algod_client, account_2)
     display_account_algo_balance(algod_client, account_3)
 
-# mostrando confirmaciones de transacciones
+    # mostrando confirmaciones de transacciones
     # tx1
     confirmed_txn = algod_client.pending_transaction_info(txn_1.get_txid())
-    print("Transaction information: {}".format(
-        json.dumps(confirmed_txn, indent=4)))
+    print("Transaction information: {}".format(json.dumps(confirmed_txn, indent=4)))
 
     # tx2
     confirmed_txn = algod_client.pending_transaction_info(txn_2.get_txid())
-    print("Transaction information: {}".format(
-        json.dumps(confirmed_txn, indent=4)))
+    print("Transaction information: {}".format(json.dumps(confirmed_txn, indent=4)))
 
-
-group_transactions()
